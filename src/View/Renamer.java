@@ -12,15 +12,19 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.util.HashMap;
+import java.util.LinkedList;
 
 public class Renamer extends JFrame {
-    
+
     private static int countOfRows;
     JTree tree;
     final JFrame window;
     JScrollPane pane;
 
-    //Creating a Treenode with directories and files
+//    List<HashMap<File, File> list = new LinkedList<HashMap<File, File>>();
+
+// Creating a Treenode with directories and files
     static DefaultMutableTreeNode getNodes(File file, DefaultMutableTreeNode node){
 
            for(File paths: file.listFiles() ){
@@ -60,9 +64,9 @@ public class Renamer extends JFrame {
         tree = expandJtree(tree);
         System.out.println(tree.getRowCount());
 
-        Button rename = new Button("rename");
-        Button up = new Button("up");
-        Button down = new Button("down");
+        JButton rename = new JButton("rename");
+        JButton up = new JButton("up");
+        JButton down = new JButton("down");
 
 
         JPanel leftPanel = new JPanel();
@@ -82,6 +86,7 @@ public class Renamer extends JFrame {
 
         add(leftPanel);
         add(rightPanel);
+
 
 
     rename.addActionListener(new ActionListener() {
@@ -110,6 +115,27 @@ public class Renamer extends JFrame {
 
 
         setVisible(true);
+
+        //Think about better way to do this
+
+
+        up.setEnabled(false);
+        rename.setEnabled(false);
+        down.setEnabled(false);
+
+
+        rename.setToolTipText("Choose at least one file or directory");
+
+        while(tree.getSelectionCount() == 0){
+
+        }
+        up.setEnabled(true);
+        rename.setEnabled(true);
+        down.setEnabled(true);
+        rename.setToolTipText("rename choosen files and directories");
+
+
+
     }
 
     public static void main(String[] args) {

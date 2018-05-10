@@ -36,6 +36,9 @@ public class MainWindow extends JFrame {
 
                 if(result == JFileChooser.APPROVE_OPTION)
                     PATH_TO_DIRECTORIES = chooser.getSelectedFile();
+                else
+                    System.exit(0);
+
 
                 new Renamer(PATH_TO_DIRECTORIES);
             }
