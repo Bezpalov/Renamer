@@ -1,14 +1,25 @@
 package View;
 
+import com.sun.crypto.provider.JceKeyStore;
+
 import javax.swing.*;
+import javax.swing.event.TreeModelEvent;
+import javax.swing.event.TreeModelListener;
 import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 
 public class Renamer extends JFrame {
+    
     private static int countOfRows;
+    JTree tree;
+    final JFrame window;
+    JScrollPane pane;
+
     //Creating a Treenode with directories and files
     static DefaultMutableTreeNode getNodes(File file, DefaultMutableTreeNode node){
 
@@ -39,11 +50,13 @@ public class Renamer extends JFrame {
 
     public Renamer(File file) {
         super("Renamer");
+        window = this;
         setSize(400, 500);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
         DefaultMutableTreeNode nodes = getNodes(file, new DefaultMutableTreeNode(file));
-        JTree tree = new JTree(nodes);
+        TreeModel treeModel = new DefaultTreeModel(nodes);
+        tree = new JTree(treeModel);
         tree = expandJtree(tree);
         System.out.println(tree.getRowCount());
 
@@ -60,7 +73,9 @@ public class Renamer extends JFrame {
         setLayout(new FlowLayout(FlowLayout.LEFT));
         rightPanel.setLayout(new BorderLayout(10, 15));
 
-        leftPanel.add(new JScrollPane(tree));
+        pane = new JScrollPane(tree);
+        leftPanel.add(pane);
+
         rightPanel.add(rename, BorderLayout.NORTH);
         rightPanel.add(up, BorderLayout.CENTER);
         rightPanel.add(down, BorderLayout.SOUTH);
@@ -69,6 +84,27 @@ public class Renamer extends JFrame {
         add(rightPanel);
 
 
+    rename.addActionListener(new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+
+
+           leftPanel.remove(pane);
+//
+//
+            DefaultMutableTreeNode nodes = getNodes(file, new DefaultMutableTreeNode(file));
+            TreeModel treeModel = new DefaultTreeModel(nodes);
+            tree = new JTree(treeModel);
+            tree = expandJtree(tree);
+            pane = new JScrollPane(tree);
+            leftPanel.add(pane);
+            leftPanel.repaint();
+            window.repaint();
+
+            leftPanel.updateUI();
+//
+        }
+    });
 
 
 
@@ -77,6 +113,6 @@ public class Renamer extends JFrame {
     }
 
     public static void main(String[] args) {
-        new Renamer(new File("g:/users/wrath/desktop/java"));
+        new Renamer(new File("c:/users/au/desktop/Hearthstone"));
     }
 }
