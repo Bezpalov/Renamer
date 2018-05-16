@@ -1,4 +1,4 @@
-package View;
+package view;
 
 import javax.swing.*;
 import java.awt.*;
@@ -6,11 +6,11 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 
-public class MainWindow extends JFrame {
+public class MainWindowView extends JFrame {
     private static  File PATH_TO_DIRECTORIES;
-    private MainWindow window;
+    private MainWindowView window;
 
-    public MainWindow(){
+    public MainWindowView(){
         super("Main Window");
         window = this;
         setSize(270, 100);
@@ -19,7 +19,7 @@ public class MainWindow extends JFrame {
 
         JPanel upPanel = new JPanel(new FlowLayout(FlowLayout.LEFT,50, 15));
         upPanel.setSize(300,100);
-        Button rename = new Button("Renamer");
+        Button rename = new Button("RenamerView");
         Button changeTime = new Button("Change time");
         upPanel.add(rename);
         upPanel.add(changeTime);
@@ -40,7 +40,7 @@ public class MainWindow extends JFrame {
                     System.exit(0);
 
 
-                new Renamer(PATH_TO_DIRECTORIES);
+                new RenamerView(PATH_TO_DIRECTORIES);
             }
         });
 
@@ -60,6 +60,6 @@ public class MainWindow extends JFrame {
 
     }
     public static void main(String[] args) {
-        new MainWindow();
+        new MainWindowView();
     }
 }
