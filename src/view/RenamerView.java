@@ -10,8 +10,7 @@ import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
-import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.*;
 
 public class RenamerView extends JFrame implements ActionListener {
 
@@ -24,12 +23,13 @@ public class RenamerView extends JFrame implements ActionListener {
     JButton down;
     JButton renameWithNames;
     JButton undo;
-    JButton returnButton;
+    JButton redo;
     JPanel leftPanel;
     JPanel rightPanel;
     File file;
 
     LinkedList<HashMap<String, String>> renameList = new LinkedList<>();
+    private int place = -1;
 
     // Creating a Treenode with directories and files
     static DefaultMutableTreeNode getNodes(File file, DefaultMutableTreeNode node){
@@ -74,13 +74,33 @@ public class RenamerView extends JFrame implements ActionListener {
         return file;
     }
 
+    void toUndo(){
+        String renameTo;
+        String renameFrom;
+        HashMap<String, String> map = renameList.get(place);
+        Set<Map.Entry<String,String>> entrySet = map.entrySet();
+
+        for(Map.Entry<String, String> pair: entrySet ){
+            renameTo = pair.getKey();
+            renameFrom = pair.getValue();
+            new File(renameFrom).renameTo(new File(renameTo));
+        }
+        place--;
+    }
+
+    void toRedo(){
+
+    }
+
     //if true numbers, if false - new names
     String rename(File[] files, boolean flag){
         int positive = 0;
         int negative = 0;
         HashMap<String, String> map = new HashMap<>();
 
-        for (int i = 0; i < files.length; i++) {
+        //sort for rename deeper elements first
+        Arrays.sort(files);
+        for (int i = files.length-1; i >= 0; i--) {
             String path = files[i].getPath();
             String cutPath = path.substring(0, path.lastIndexOf(File.separator)+1);
             String oldName = null;
@@ -103,6 +123,7 @@ public class RenamerView extends JFrame implements ActionListener {
             if(isRename) {
                 //add in collection to future responsibility undo the rename
                 map.put(path, cutPath);
+                place++;
                 positive++;
             }else
                 negative++;
@@ -113,12 +134,46 @@ public class RenamerView extends JFrame implements ActionListener {
 
     }
 
-    String toUpper(File[] file){
-        String path
-        for (int i = 0; i < file.length; i++) {
+    //if true - toUpperCase, if false - to lowerCase
+    String toCase(File[] file, boolean bln){
+        HashMap<String, String> map = new HashMap<>();
+        String result = "";
+        int negative = 0;
+        int positive = 0;
 
+        for (int i = 0; i < file.length; i++) {
+            String path = file[i].getPath();
+            String cutPath = path.substring(path.lastIndexOf(File.separator));
+
+            if(file[i].isDirectory() || cutPath.contains("\\.") || !cutPath.contains(".")) {
+                negative++;
+                continue;
+            }
+
+            String extension="";
+            if(bln)
+                extension = cutPath.substring(cutPath.lastIndexOf(".")).toUpperCase();
+            else
+                extension = cutPath.substring(cutPath.lastIndexOf(".")).toLowerCase();
+
+            cutPath = path.replace(cutPath.substring(cutPath.lastIndexOf(".")), extension);
+            boolean flag = file[i].renameTo(new File(cutPath));
+
+            //check on equals paths. if equals File.renameTo will return true, but name will be the same.
+            // That's why positive--
+            if(path.equals(cutPath))
+                positive--;
+
+            if(flag){
+              map.put(path, cutPath);
+              place++;
+              positive++;
+            }
         }
-        return null;
+        renameList.add(map);
+        result = "Quantity of renamed files is " + positive + "\n"
+                + "Quantity of unrenamed files is " + negative;
+        return result;
     }
 
     void setButonsBool(boolean bln, JButton... buttons){
@@ -152,6 +207,20 @@ public class RenamerView extends JFrame implements ActionListener {
         }
     }
 
+    private void setLookAndFeelForProgram() {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (UnsupportedLookAndFeelException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
 
@@ -167,16 +236,17 @@ public class RenamerView extends JFrame implements ActionListener {
                     case "name rename":
                         result = rename(treepathToFile(paths), false);
                         break;
-                    case "returnButton":
+                    case "redo":
                         System.out.println("return");
                         break;
                     case "up":
-                        System.out.println("up");
+                        result = toCase(treepathToFile(paths), true);
                         break;
                     case "down":
-                        System.out.println("down");
+                        result = toCase(treepathToFile(paths), false);
                         break;
                     case "undo":
+                        toUndo();
                         System.out.println("undo");
                         break;
                 }
@@ -204,6 +274,7 @@ public class RenamerView extends JFrame implements ActionListener {
         window = this;
         this.file = file;
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLookAndFeelForProgram();
 
         //Create Tree
         DefaultMutableTreeNode nodes = getNodes(file, new DefaultMutableTreeNode(file));
@@ -217,7 +288,7 @@ public class RenamerView extends JFrame implements ActionListener {
         up = new JButton("up");
         down = new JButton("down");
         undo = new JButton("undo");
-        returnButton = new JButton("return");
+        redo = new JButton("return");
         setButonsBool(false, rename, up, down, renameWithNames);
         setToolTips(false);
 
@@ -239,7 +310,7 @@ public class RenamerView extends JFrame implements ActionListener {
         rightPanel.add(up);
         rightPanel.add(down);
         rightPanel.add(undo);
-        rightPanel.add(returnButton);
+        rightPanel.add(redo);
 
         add(leftPanel);
         add(rightPanel);
@@ -248,56 +319,16 @@ public class RenamerView extends JFrame implements ActionListener {
         renameWithNames.addActionListener(this);
         up.addActionListener(this);
         down.addActionListener(this);
-
-
-
-
-
-
-
-
-//        addActionListener(new ActionListener() {
-//            @Override
-//            public void actionPerformed(ActionEvent e) {
-//
-//
-//                TreePath[] paths = tree.getSelectionPaths();
-//                String result = rename(treepathToFile(paths), false);
-//                JOptionPane.showMessageDialog(window, result);
-//
-//                leftPanel.remove(pane);
-//
-//                DefaultMutableTreeNode nodes = getNodes(file, new DefaultMutableTreeNode(file));
-//                TreeModel treeModel = new DefaultTreeModel(nodes);
-//                tree = new JTree(treeModel);
-//                tree = expandJtree(tree);
-//                pane = new JScrollPane(tree);
-//                leftPanel.add(pane);
-//                leftPanel.repaint();
-//                window.repaint();
-//                leftPanel.updateUI();
-//
-//                addSelectListener(tree);
-//                setToolTips(false);
-//                setButonsBool(false, rename, up, down);
-////
-//            }
-//        });
+        undo.addActionListener(this);
+        redo.addActionListener(this);
 
         //Custom listener for tree. Do it because it repeat in rename.actionListener
         addSelectListener(tree);
-
-
-
-
-
         pack();
         setVisible(true);
     }
 
     public static void main(String[] args) {
-        new RenamerView(new File("C:\\Users\\Au\\Desktop\\glassfish 4.1.2"));
+        new RenamerView(new File("G:\\Users\\Wrath\\Desktop\\glassfish4"));
     }
-
-
 }
