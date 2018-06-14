@@ -1,6 +1,8 @@
 package view;
 
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -15,6 +17,8 @@ import java.util.*;
 public class RenamerView extends JFrame implements ActionListener {
 
     private static int countOfRows;
+
+
     JTree tree;
     final JFrame window;
     JScrollPane pane;
@@ -24,8 +28,12 @@ public class RenamerView extends JFrame implements ActionListener {
     JButton renameWithNames;
     JButton undo;
     JButton redo;
+    JButton changeCreationTime;
+    JButton changeLastFormatTime;
     JPanel leftPanel;
     JPanel rightPanel;
+    JPanel rightDownPanel;
+    JPanel rightUpPanel;
     File file;
 
     LinkedList<HashMap<String, String>> renameList = new LinkedList<>();
@@ -227,10 +235,15 @@ public class RenamerView extends JFrame implements ActionListener {
     }
 
     void addItemStateListener(){
+            undo.addChangeListener(new ChangeListener() {
+                @Override
+                public void stateChanged(ChangeEvent e) {
+                }
+            });
         undo.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
-                undo.setEnabled(true);
+
 
                 if(place < 0 )
                     undo.setEnabled((false));
@@ -326,32 +339,91 @@ public class RenamerView extends JFrame implements ActionListener {
         down = new JButton("down");
         undo = new JButton("undo");
         redo = new JButton("redo");
+        changeCreationTime = new JButton("Change");
+        changeLastFormatTime = new JButton("Change");
         setButonsBool(false, rename, up, down, renameWithNames, undo, redo);
         setToolTips(false);
 
+        //Labels
+        JLabel timeOFCreationName = new JLabel("Creation Time");
+        JLabel lastChangingName = new JLabel("Last Changing");
+
+        //TextFields
+        JTextField fieldCreationTime = new JTextField("creationTime");
+        JTextField fieldChangeTime = new JTextField("change time");
+
         //Panels
         leftPanel = new JPanel();
-        rightPanel = new JPanel();
+        rightPanel = new JPanel(new GridLayout(2, 1));
+        //РАзбивка правой части на 2 панели
+        rightUpPanel = new JPanel();
+        rightDownPanel = new JPanel();
+        rightPanel.add(rightUpPanel);
+        rightPanel.add(rightDownPanel);
 
+        //установка менеджеров компоновки и наполнение панелей
         setLayout(new FlowLayout(FlowLayout.LEFT));
-        GridLayout grid = new GridLayout(6, 1);
+        GridLayout grid = new GridLayout(3, 2);
         grid.setHgap(10);
         grid.setVgap(15);
-        rightPanel.setLayout(grid);
+        rightDownPanel.setLayout(grid);
+
+        //GroupLayout для нормального отображения поля с
+        GroupLayout groupLayout = new GroupLayout(rightUpPanel);
+        rightUpPanel.setLayout(groupLayout);
+        groupLayout.setHorizontalGroup(groupLayout.createSequentialGroup()
+                .addGroup(
+                    groupLayout.createParallelGroup(GroupLayout.Alignment.CENTER)
+                        .addComponent(timeOFCreationName)
+                        .addComponent(fieldCreationTime)
+                        .addComponent(changeCreationTime)
+                )
+                .addGroup(
+                        groupLayout.createParallelGroup(GroupLayout.Alignment.CENTER)
+                            .addComponent(lastChangingName)
+                            .addComponent(fieldChangeTime)
+                            .addComponent(changeLastFormatTime)
+                )
+        );
+
+        groupLayout.setVerticalGroup(groupLayout.createSequentialGroup()
+                .addGroup(
+                        groupLayout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                            .addComponent(timeOFCreationName)
+                            .addComponent(lastChangingName)
+                )
+                .addGroup(
+                        groupLayout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                .addComponent(fieldChangeTime)
+                                .addComponent(fieldCreationTime)
+                )
+                .addGroup(
+                        groupLayout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                .addComponent(changeCreationTime)
+                                .addComponent(changeLastFormatTime)
+                )
+        );
 
         pane = new JScrollPane(tree);
         leftPanel.add(pane);
 
-        rightPanel.add(renameWithNames);
-        rightPanel.add(rename);
-        rightPanel.add(up);
-        rightPanel.add(down);
-        rightPanel.add(undo);
-        rightPanel.add(redo);
+        rightDownPanel.add(renameWithNames);
+        rightDownPanel.add(rename);
+        rightDownPanel.add(up);
+        rightDownPanel.add(down);
+        rightDownPanel.add(undo);
+        rightDownPanel.add(redo);
+
+
+
+
+
+
 
         add(leftPanel);
         add(rightPanel);
 
+        //Добавление слушателей к кнопкам
         rename.addActionListener(this);
         renameWithNames.addActionListener(this);
         up.addActionListener(this);
@@ -367,6 +439,6 @@ public class RenamerView extends JFrame implements ActionListener {
     }
 
     public static void main(String[] args) {
-        new RenamerView(new File("C:\\Users\\au\\Desktop\\glassfish 4.1.2"));
+        new RenamerView(new File("C:\\Users\\au\\Desktop\\REC"));
     }
 }
