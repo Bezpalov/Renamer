@@ -1,8 +1,6 @@
 package view;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -17,24 +15,23 @@ import java.util.*;
 public class RenamerView extends JFrame implements ActionListener {
 
     private static int countOfRows;
-
-
-    JTree tree;
+    private JTree tree;
     final JFrame window;
-    JScrollPane pane;
-    JButton rename;
-    JButton up;
-    JButton down;
-    JButton renameWithNames;
-    JButton undo;
-    JButton redo;
-    JButton changeCreationTime;
-    JButton changeLastFormatTime;
-    JPanel leftPanel;
-    JPanel rightPanel;
-    JPanel rightDownPanel;
-    JPanel rightUpPanel;
-    File file;
+    private JScrollPane pane;
+    private JButton rename;
+    private JButton up;
+    private JButton down;
+    private JButton renameWithNames;
+    private JButton undo;
+    private JButton redo;
+    private JButton changeCreationTime;
+    private JButton changeLastFormatTime;
+    private JPanel leftPanel;
+    private JPanel rightPanel;
+    private JPanel rightDownPanel;
+    private JPanel rightUpPanel;
+    private File file;
+    private Position pos = new Position();
 
     LinkedList<HashMap<String, String>> renameList = new LinkedList<>();
     private int place = -1;
@@ -85,7 +82,7 @@ public class RenamerView extends JFrame implements ActionListener {
     void toUndo() {
         String renameTo;
         String renameFrom;
-        HashMap<String, String> map = renameList.get(place);
+        HashMap<String, String> map = renameList.get(pos.getPosition());
         Set<Map.Entry<String, String>> entrySet = map.entrySet();
 
         for (Map.Entry<String, String> pair : entrySet) {
@@ -93,14 +90,15 @@ public class RenamerView extends JFrame implements ActionListener {
             renameFrom = pair.getValue();
             new File(renameFrom).renameTo(new File(renameTo));
         }
-        place--;
+        pos.incrementPos();
+//        place--;
     }
 
     void toRedo() {
-        place++;
+        pos.decrementPos();
         String renameTo;
         String renameFrom;
-        HashMap<String, String> map = renameList.get(place);
+        HashMap<String, String> map = renameList.get(pos.getPosition());
         Set<Map.Entry<String, String>> entrySet = map.entrySet();
 
         for (Map.Entry<String, String> pair : entrySet) {
@@ -110,8 +108,6 @@ public class RenamerView extends JFrame implements ActionListener {
         }
 
     }
-
-
 
     //if true numbers, if false - new names
     String rename(File[] files, boolean flag){
@@ -149,7 +145,7 @@ public class RenamerView extends JFrame implements ActionListener {
             }else
                 negative++;
         }
-        place++;
+        pos.incrementPos();
         renameList.add(map);
     return "Quantity of renamed files is " + positive + "\n"
             + "Quantity of unrenamed files is " + negative;
@@ -191,7 +187,7 @@ public class RenamerView extends JFrame implements ActionListener {
               positive++;
             }
         }
-        place++;
+        pos.incrementPos();
         renameList.add(map);
         result = "Quantity of renamed files is " + positive + "\n"
                 + "Quantity of unrenamed files is " + negative;
@@ -203,8 +199,6 @@ public class RenamerView extends JFrame implements ActionListener {
             buttons[i].setEnabled(bln);
         }
     }
-
-
 
     void setToolTips(boolean bln){
         if(bln){
@@ -234,32 +228,7 @@ public class RenamerView extends JFrame implements ActionListener {
         }
     }
 
-    void addItemStateListener(){
-            undo.addChangeListener(new ChangeListener() {
-                @Override
-                public void stateChanged(ChangeEvent e) {
-                }
-            });
-        undo.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
 
-
-                if(place < 0 )
-                    undo.setEnabled((false));
-            }
-        });
-
-        redo.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                redo.setEnabled(true);
-
-                if(place >= renameList.size() || renameList.size() == 0)
-                    redo.setEnabled(false);
-            }
-        });
-    }
 
     void addSelectListener(JTree tree){
         tree.addTreeSelectionListener(new TreeSelectionListener() {
@@ -316,8 +285,9 @@ public class RenamerView extends JFrame implements ActionListener {
 
                 addSelectListener(tree);
                 setToolTips(false);
-                setButonsBool(false, rename, up, down, renameWithNames, undo, redo);
+                setButonsBool(false, rename, up, down, renameWithNames);
     }
+
 
     public RenamerView(File file) {
         super("RenamerView");
@@ -341,7 +311,7 @@ public class RenamerView extends JFrame implements ActionListener {
         redo = new JButton("redo");
         changeCreationTime = new JButton("Change");
         changeLastFormatTime = new JButton("Change");
-        setButonsBool(false, rename, up, down, renameWithNames, undo, redo);
+        setButonsBool(false, rename, up, down, renameWithNames);
         setToolTips(false);
 
         //Labels
@@ -368,7 +338,7 @@ public class RenamerView extends JFrame implements ActionListener {
         grid.setVgap(15);
         rightDownPanel.setLayout(grid);
 
-        //GroupLayout для нормального отображения поля с
+        //GroupLayout для нормального отображения поля с измененным временем
         GroupLayout groupLayout = new GroupLayout(rightUpPanel);
         rightUpPanel.setLayout(groupLayout);
         groupLayout.setHorizontalGroup(groupLayout.createSequentialGroup()
@@ -415,11 +385,6 @@ public class RenamerView extends JFrame implements ActionListener {
         rightDownPanel.add(redo);
 
 
-
-
-
-
-
         add(leftPanel);
         add(rightPanel);
 
@@ -431,13 +396,38 @@ public class RenamerView extends JFrame implements ActionListener {
         undo.addActionListener(this);
         redo.addActionListener(this);
 
-        addItemStateListener();
         //Custom listener for tree. Do it because it repeat in rename.actionListener
         addSelectListener(tree);
         pack();
         setVisible(true);
     }
 
+    //inner class for undo and redo Enable/unEnable States
+    class Position{
+        private int position = -1;
+
+        public int getPosition(){
+            return position;
+        }
+
+        public void incrementPos(){
+            position++;
+
+            if(position >= renameList.size())
+                redo.setEnabled(false);
+            else
+                redo.setEnabled(true);
+
+        }
+        public void decrementPos(){
+            position--;
+            if(position == -1)
+                undo.setEnabled(false);
+            else
+                undo.setEnabled(true);
+        }
+
+    }
     public static void main(String[] args) {
         new RenamerView(new File("C:\\Users\\au\\Desktop\\REC"));
     }
