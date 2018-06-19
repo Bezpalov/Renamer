@@ -6,23 +6,17 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 
-public class MainWindowView extends JFrame {
+public class MainWindow extends JFrame {
     private static  File PATH_TO_DIRECTORIES;
-    private MainWindowView window;
+    private MainWindow window;
 
-    public MainWindowView(){
+    public MainWindow(){
         super("Main Window");
         window = this;
         setSize(270, 100);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-
-
-        JPanel upPanel = new JPanel(new FlowLayout(FlowLayout.LEFT,50, 15));
-        upPanel.setSize(300,100);
-        Button rename = new Button("RenamerView");
-        Button changeTime = new Button("Change time");
-        upPanel.add(rename);
-        upPanel.add(changeTime);
+        Renamer.setLookAndFeelForProgram();
+        Button rename = new Button("Choose a file");
 
         rename.addActionListener(new ActionListener() {
             @Override
@@ -30,7 +24,6 @@ public class MainWindowView extends JFrame {
                 //Close first window
                 window.setVisible(false);
                 JFileChooser chooser = new JFileChooser();
-                chooser.setCurrentDirectory(new File("g:/users/wrath/desktop"));
                 chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
                 int result = chooser.showOpenDialog(rename);
 
@@ -39,19 +32,22 @@ public class MainWindowView extends JFrame {
                 else
                     System.exit(0);
 
-
-                new RenamerView(PATH_TO_DIRECTORIES);
+                new Renamer(PATH_TO_DIRECTORIES);
+                window.dispose();
             }
         });
 
         setLayout(new FlowLayout());
-        add(upPanel);
+        add(rename);
         setVisible(true);
-
 
     }
 
-    //Check on throwing  a NullPointerException
+    /**
+     * Проверка на наличие ошибки
+     * @return возвращает обьект File
+     * @throws NullPointerException
+     */
     public File getPathToDirectories() throws NullPointerException{
         if(PATH_TO_DIRECTORIES != null)
             return PATH_TO_DIRECTORIES;
@@ -59,7 +55,12 @@ public class MainWindowView extends JFrame {
             throw new NullPointerException("PATH_TO_DIRECTORIES == null");
 
     }
+
+    /**
+     * Точка входа в приложение
+     * @param args
+     */
     public static void main(String[] args) {
-        new MainWindowView();
+        new MainWindow();
     }
 }

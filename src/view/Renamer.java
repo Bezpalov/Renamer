@@ -10,13 +10,21 @@ import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
-public class RenamerView extends JFrame implements ActionListener {
+public class Renamer extends JFrame implements ActionListener {
 
     private static int countOfRows;
     private JTree tree;
-    final JFrame window;
+    final private JFrame window;
     private JScrollPane pane;
     private JButton rename;
     private JButton up;
@@ -24,19 +32,32 @@ public class RenamerView extends JFrame implements ActionListener {
     private JButton renameWithNames;
     private JButton undo;
     private JButton redo;
-    private JButton changeCreationTime;
-    private JButton changeLastFormatTime;
+    private JButton CreationTime;
+    private JButton LastFormatTime;
     private JPanel leftPanel;
     private JPanel rightPanel;
     private JPanel rightDownPanel;
     private JPanel rightUpPanel;
+    private JLabel timeOFCreationName;
+    private JLabel lastChangingName;
+    private JTextField fieldCreationTime;
+    private JTextField fieldChangeTime;
     private File file;
     private Position pos = new Position();
+    private Path path;
+    private int place;
 
+    /**
+     * Коллекция для хранения переименованных ранее элементов
+     */
     LinkedList<HashMap<String, String>> renameList = new LinkedList<>();
-    private int place = -1;
 
-    // Creating a Treenode with directories and files
+    /**
+     * Создание дерева из нод
+     * @param file исходная директория или файл
+     * @param node корневая нода для посторения дерева
+     * @return заполненное TreeNode
+     */
     static DefaultMutableTreeNode getNodes(File file, DefaultMutableTreeNode node) {
         for (File paths : file.listFiles()) {
             DefaultMutableTreeNode newChild = new DefaultMutableTreeNode(paths.getName());
@@ -52,7 +73,11 @@ public class RenamerView extends JFrame implements ActionListener {
         return node;
     }
 
-    //Expand tree
+    /**
+     * Развертка дерева на главном окне программы
+     * @param tree исходное дерево
+     * @return развернутое дерево
+     */
     static JTree expandJtree(JTree tree) {
 
 
@@ -65,6 +90,25 @@ public class RenamerView extends JFrame implements ActionListener {
         return tree;
     }
 
+    /**
+     * Преобразование TreePath к Path при сохранении пути
+     * @param tPath Выделенный на дереве элемент
+     * @return обьект типа Path с тем же путем что и исходный обьект
+     */
+    Path treePathtoPath(TreePath tPath){
+        String path = "";
+        for (int i = 0; i <tPath.getPathCount(); i++) {
+            Object obj = tPath.getPathComponent(i);
+            path += obj.toString() + File.separator;
+        }
+        return Paths.get(path);
+    }
+
+    /**
+     * Преобразование массива (или нет) treePath к File
+     * @param paths выделенные на дереве элементы
+     * @return массив обьектов File для дальнейщей работы
+     */
     File[] treepathToFile(TreePath[] paths) {
         File[] file = new File[paths.length];
         String path = "";
@@ -79,6 +123,9 @@ public class RenamerView extends JFrame implements ActionListener {
         return file;
     }
 
+    /**
+     * возвращение переименованных ранее элементов на 1 операцию вперед
+     */
     void toUndo() {
         String renameTo;
         String renameFrom;
@@ -90,12 +137,16 @@ public class RenamerView extends JFrame implements ActionListener {
             renameFrom = pair.getValue();
             new File(renameFrom).renameTo(new File(renameTo));
         }
-        pos.incrementPos();
-//        place--;
+        place = pos.getPosition();
+        pos.setPosition(--place);
     }
 
+    /**
+     * возвращение к переименованным ранее элементам на 1 операцию назад
+     */
     void toRedo() {
-        pos.decrementPos();
+        place = pos.getPosition();
+        pos.setPosition(++place);
         String renameTo;
         String renameFrom;
         HashMap<String, String> map = renameList.get(pos.getPosition());
@@ -109,7 +160,20 @@ public class RenamerView extends JFrame implements ActionListener {
 
     }
 
-    //if true numbers, if false - new names
+    /**
+     * Переименование файлов и директорий
+     * @param files ранее полученный массив типа File, содержащий пути
+     *              к выделенным ранее элементам дерева
+     * @param flag Параметр, отвечающий за выбор типа переименования,
+     *
+     *             если true - то файлы будут переименовываться
+     *             с присвоением им имен в виде чисел (от 1 до кол-ва файлов)
+     *
+     *             если false - переименование будет происходить путем
+     *             назначения вручную каждого выделенего элемента
+     *             (имена файлов надо указывать с расщирением)
+     * @return возвращает строку в которой описано кол-во удачных и неудачных переименований
+     */
     String rename(File[] files, boolean flag){
         int positive = 0;
         int negative = 0;
@@ -124,8 +188,11 @@ public class RenamerView extends JFrame implements ActionListener {
 
             if(flag)
                 oldName = path.replace(cutPath, "");
-            else
-                oldName = JOptionPane.showInputDialog("Enter a new name");
+            else {
+                oldName = JOptionPane.showInputDialog("Enter a new name for: \n " + files[i].getPath());
+                if(oldName == null)
+                    continue;
+            }
 
             if(files[i].isDirectory() || oldName.charAt(0) == '.' || !oldName.contains(".")) {
                 if (flag)
@@ -145,14 +212,23 @@ public class RenamerView extends JFrame implements ActionListener {
             }else
                 negative++;
         }
-        pos.incrementPos();
+        place = pos.getPosition();
+        pos.setPosition(++place);
         renameList.add(map);
     return "Quantity of renamed files is " + positive + "\n"
             + "Quantity of unrenamed files is " + negative;
 
     }
 
-    //if true - toUpperCase, if false - to lowerCase
+    /**
+     * Изменение регистра файлов
+     * @param file массив типа File, содержащий пути к выделенным ранее
+     *             элементам дерева
+     * @param bln Параметр, отвечающий за выбор типа переименования
+     *            true - верхний регистр
+     *            false - нижний регистр
+     * @return возвращает строку в которой описано кол-во удачных и неудачных переименований
+     */
     String toCase(File[] file, boolean bln){
         HashMap<String, String> map = new HashMap<>();
         String result = "";
@@ -187,19 +263,33 @@ public class RenamerView extends JFrame implements ActionListener {
               positive++;
             }
         }
-        pos.incrementPos();
+        place = pos.getPosition();
+        pos.setPosition(++place);
         renameList.add(map);
         result = "Quantity of renamed files is " + positive + "\n"
                 + "Quantity of unrenamed files is " + negative;
         return result;
     }
 
+    /**
+     * Установка значения setEnabled(boolean) для набора кнопок
+     * @param bln Параметр, отвечающий за включение или выкючение кнопок
+     *            true - кнопки включены
+     *            false - кнопки выключены
+     * @param buttons набор кнопок
+     */
     void setButonsBool(boolean bln, JButton... buttons){
         for (int i = 0; i < buttons.length; i++) {
             buttons[i].setEnabled(bln);
         }
     }
 
+    /**
+     * Установка подсказок для набора кнопок
+     * @param bln Параметр, отвечающий за тип подсказки
+     *            true - подсказка для работающей кнопки
+     *            false - подсказка для не работающей кнопки
+     */
     void setToolTips(boolean bln){
         if(bln){
             rename.setToolTipText("rename a chosen files and directories. New names will change according to order of numbers");
@@ -214,7 +304,10 @@ public class RenamerView extends JFrame implements ActionListener {
         }
     }
 
-    private void setLookAndFeelForProgram() {
+    /**
+     * установка lookandFeel для программы
+     */
+    public static void setLookAndFeelForProgram() {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (ClassNotFoundException e) {
@@ -228,19 +321,111 @@ public class RenamerView extends JFrame implements ActionListener {
         }
     }
 
-
-
+    /**
+     * Добавление слушателя дерева для установления факта
+     * выделения его элемента
+     * @param tree прослушиваемое дерево
+     */
     void addSelectListener(JTree tree){
         tree.addTreeSelectionListener(new TreeSelectionListener() {
             @Override
             public void valueChanged(TreeSelectionEvent e) {
-                setButonsBool(true, rename, up, down, renameWithNames);
+                //Получение пути выделенного файла, для того чтобы узнать время создания и посл изменения
+                path = treePathtoPath(e.getPath());
+                setButonsBool(true, rename, up, down, renameWithNames, CreationTime, LastFormatTime);
                 setToolTips(true);
+
+                //заполнение полей времения создания и последней модификации файла/директории
+               FileTime timeModified = getPathLastModifiedTime(path);
+               fieldChangeTime.setText(createDateFormat(timeModified));
+               FileTime timeCreation = getPathCreationTime(path);
+               fieldCreationTime.setText(createDateFormat(timeCreation));
             }
         });
-
     }
 
+    /**
+     * Получение времени создания файла по обьекту типа Path
+     * @param path путь к файлу
+     * @return время создания файла
+     */
+    private FileTime getPathCreationTime(Path path) {
+        FileTime createTime = null;
+
+        try {
+            BasicFileAttributes att = Files.readAttributes(path, BasicFileAttributes.class);
+            createTime = att.creationTime();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return createTime;
+    }
+
+    /**
+     * Получение времени последенего редактирования файла по обьекту типа Path
+     * @param path путь к файлу
+     * @return время последнего редактирования файла
+     */
+    private FileTime getPathLastModifiedTime(Path path) {
+        FileTime lastModified = null;
+        try {
+            lastModified = Files.getLastModifiedTime(path);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return lastModified;
+    }
+
+    /**
+     * Превращение обьекта типа FileTime к строке
+     * @param time обьект для трансформации
+     * @return строковое представление даты
+     */
+    private String createDateFormat(FileTime time) {
+        Date date = new Date(time.toMillis());
+        SimpleDateFormat formatDate = new SimpleDateFormat("d.MM.yyyy");
+        return formatDate.format(date);
+    }
+
+    /**
+     * Редактирование времени создания и последнего редактирования файла
+     * @param attr аттрибут, который мы изменям
+     *             creationTime - изменение времени создания
+     *             lastModifiedTime - изменение времени последнего редактирования
+     * @param field поле из которого берем новую дату
+     *              fieldCreationTime - поле слздания файла
+     *              fieldChangeTime - поле последенего редактирования файла
+     * @param time старое время
+     * @return возвращает строку с удачным или неудачым результатом и
+     *          дополнительной информацией
+     */
+    private String changeTime(String attr, JTextField field, String time) {
+        String result = field.getText();
+        String oldDate = time;
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
+        Path returnedPath = null;
+
+        try {
+            Date date = dateFormat.parse(result);
+            long mills = date.getTime();
+            FileTime fileTime = FileTime.fromMillis(mills);
+            returnedPath = Files.setAttribute(path, attr, fileTime);
+        } catch (IOException e ) {
+            e.printStackTrace();
+        }catch (ParseException e){
+            result = "wrong date format";
+        }
+        String temp = "File name: " + returnedPath.getFileName() + "\n"
+                + "Path: " + path + "\n"
+                + "Date change from " + oldDate + " to " + result;
+        return temp;
+    }
+
+    /**
+     * Реализацию слушателя для всех кнопок приложения
+      * @param e
+     */
     @Override
     public void actionPerformed(ActionEvent e) {
 
@@ -268,11 +453,17 @@ public class RenamerView extends JFrame implements ActionListener {
                     case "undo":
                         toUndo();
                         break;
+                    case "Change":
+                        result = changeTime("creationTime", fieldCreationTime, createDateFormat(getPathCreationTime(path)));
+                        break;
+                    case "lastModifiedTime":
+                        result = changeTime("lastModifiedTime", fieldChangeTime, createDateFormat(getPathLastModifiedTime(path)));
+                        break;
                 }
                 JOptionPane.showMessageDialog(window, result);
 
+                //Удаление дерева и замена его на новое
                 leftPanel.remove(pane);
-
                 DefaultMutableTreeNode nodes = getNodes(file, new DefaultMutableTreeNode(file));
                 TreeModel treeModel = new DefaultTreeModel(nodes);
                 tree = new JTree(treeModel);
@@ -289,8 +480,8 @@ public class RenamerView extends JFrame implements ActionListener {
     }
 
 
-    public RenamerView(File file) {
-        super("RenamerView");
+    public Renamer(File file) {
+        super("Renamer");
         window = this;
         this.file = file;
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -309,18 +500,21 @@ public class RenamerView extends JFrame implements ActionListener {
         down = new JButton("down");
         undo = new JButton("undo");
         redo = new JButton("redo");
-        changeCreationTime = new JButton("Change");
-        changeLastFormatTime = new JButton("Change");
-        setButonsBool(false, rename, up, down, renameWithNames);
+        CreationTime = new JButton("Change");
+        LastFormatTime = new JButton("Change");
+        LastFormatTime.setActionCommand("lastModifiedTime");
+        setButonsBool(false, rename, up, down, renameWithNames, undo, redo, CreationTime, LastFormatTime);
         setToolTips(false);
 
         //Labels
-        JLabel timeOFCreationName = new JLabel("Creation Time");
-        JLabel lastChangingName = new JLabel("Last Changing");
+        timeOFCreationName = new JLabel("Creation Time");
+        lastChangingName = new JLabel("Last Changing");
 
         //TextFields
-        JTextField fieldCreationTime = new JTextField("creationTime");
-        JTextField fieldChangeTime = new JTextField("change time");
+        fieldCreationTime = new JTextField("");
+        fieldCreationTime.setHorizontalAlignment(JTextField.CENTER);
+        fieldChangeTime = new JTextField("");
+        fieldChangeTime.setHorizontalAlignment(JTextField.CENTER);
 
         //Panels
         leftPanel = new JPanel();
@@ -346,13 +540,13 @@ public class RenamerView extends JFrame implements ActionListener {
                     groupLayout.createParallelGroup(GroupLayout.Alignment.CENTER)
                         .addComponent(timeOFCreationName)
                         .addComponent(fieldCreationTime)
-                        .addComponent(changeCreationTime)
+                        .addComponent(CreationTime)
                 )
                 .addGroup(
                         groupLayout.createParallelGroup(GroupLayout.Alignment.CENTER)
                             .addComponent(lastChangingName)
                             .addComponent(fieldChangeTime)
-                            .addComponent(changeLastFormatTime)
+                            .addComponent(LastFormatTime)
                 )
         );
 
@@ -369,8 +563,8 @@ public class RenamerView extends JFrame implements ActionListener {
                 )
                 .addGroup(
                         groupLayout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                .addComponent(changeCreationTime)
-                                .addComponent(changeLastFormatTime)
+                                .addComponent(CreationTime)
+                                .addComponent(LastFormatTime)
                 )
         );
 
@@ -395,6 +589,8 @@ public class RenamerView extends JFrame implements ActionListener {
         down.addActionListener(this);
         undo.addActionListener(this);
         redo.addActionListener(this);
+        CreationTime.addActionListener(this);
+        LastFormatTime.addActionListener(this);
 
         //Custom listener for tree. Do it because it repeat in rename.actionListener
         addSelectListener(tree);
@@ -402,7 +598,12 @@ public class RenamerView extends JFrame implements ActionListener {
         setVisible(true);
     }
 
-    //inner class for undo and redo Enable/unEnable States
+    //inner class for undo and redo Enable/unEnable states
+
+    /**
+     * внутренний класс для уведомления кнопок undo и redo о том, можно ли
+     * их использовать (типа Observer)
+     */
     class Position{
         private int position = -1;
 
@@ -410,25 +611,22 @@ public class RenamerView extends JFrame implements ActionListener {
             return position;
         }
 
-        public void incrementPos(){
-            position++;
+        public void setPosition(int position) {
+            this.position = position;
 
-            if(position >= renameList.size())
-                redo.setEnabled(false);
-            else
-                redo.setEnabled(true);
-
-        }
-        public void decrementPos(){
-            position--;
             if(position == -1)
                 undo.setEnabled(false);
             else
                 undo.setEnabled(true);
-        }
 
+            if(position >= renameList.size()-1)
+                redo.setEnabled(false);
+            else
+                redo.setEnabled(true);
+        }
     }
+
     public static void main(String[] args) {
-        new RenamerView(new File("C:\\Users\\au\\Desktop\\REC"));
+        new Renamer(new File("C:\\Users\\au\\Desktop\\REC"));
     }
 }
