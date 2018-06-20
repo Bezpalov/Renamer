@@ -126,7 +126,10 @@ public class Renamer extends JFrame implements ActionListener {
     /**
      * возвращение переименованных ранее элементов на 1 операцию вперед
      */
-    void toUndo() {
+    private String toUndo() {
+        int positive = 0;
+        int negative = 0;
+        boolean flag;
         String renameTo;
         String renameFrom;
         HashMap<String, String> map = renameList.get(pos.getPosition());
@@ -135,16 +138,26 @@ public class Renamer extends JFrame implements ActionListener {
         for (Map.Entry<String, String> pair : entrySet) {
             renameTo = pair.getKey();
             renameFrom = pair.getValue();
-            new File(renameFrom).renameTo(new File(renameTo));
+            flag = new File(renameFrom).renameTo(new File(renameTo));
+            if(flag)
+                positive++;
+            else
+                negative++;
         }
         place = pos.getPosition();
         pos.setPosition(--place);
+
+        return "returned files : " + positive + "\n"
+                + "not returned files : " + negative;
     }
 
     /**
      * возвращение к переименованным ранее элементам на 1 операцию назад
      */
-    void toRedo() {
+    private String toRedo() {
+        int positive = 0;
+        int negative = 0;
+        boolean flag;
         place = pos.getPosition();
         pos.setPosition(++place);
         String renameTo;
@@ -155,9 +168,15 @@ public class Renamer extends JFrame implements ActionListener {
         for (Map.Entry<String, String> pair : entrySet) {
             renameFrom = pair.getKey();
             renameTo = pair.getValue();
-            new File(renameFrom).renameTo(new File(renameTo));
+            flag = new File(renameFrom).renameTo(new File(renameTo));
+            if(flag)
+                positive++;
+            else
+                negative++;
         }
 
+        return "returned files : " + positive + "\n"
+                + "not returned files : " + negative;
     }
 
     /**
@@ -442,7 +461,7 @@ public class Renamer extends JFrame implements ActionListener {
                         result = rename(treepathToFile(paths), false);
                         break;
                     case "redo":
-                        toRedo();
+                         result = toRedo();
                         break;
                     case "up":
                         result = toCase(treepathToFile(paths), true);
@@ -451,7 +470,7 @@ public class Renamer extends JFrame implements ActionListener {
                         result = toCase(treepathToFile(paths), false);
                         break;
                     case "undo":
-                        toUndo();
+                        result = toUndo();
                         break;
                     case "Change":
                         result = changeTime("creationTime", fieldCreationTime, createDateFormat(getPathCreationTime(path)));
@@ -486,6 +505,7 @@ public class Renamer extends JFrame implements ActionListener {
         this.file = file;
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLookAndFeelForProgram();
+        setLocationRelativeTo(null);
 
         //Create Tree
         DefaultMutableTreeNode nodes = getNodes(file, new DefaultMutableTreeNode(file));

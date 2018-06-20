@@ -37,6 +37,7 @@ public class MainWindow extends JFrame {
             }
         });
 
+        setLocationRelativeTo(null);
         setLayout(new FlowLayout());
         add(rename);
         setVisible(true);
